@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cybersecurity Dashboard v3.3</title>
+  <title>Cybersecurity Dashboard v3.4</title>
   <style>
     :root {
       --bg: #09111f;
@@ -441,7 +441,8 @@
       box-shadow: inset 3px 0 0 rgba(34, 211, 238, 0.9);
     }
 
-    .skills-action-btn {
+    .skills-action-btn,
+    .pagination-btn {
       background: rgba(56,189,248,0.12);
       color: #9fdcf6;
       border: 1px solid rgba(56,189,248,0.22);
@@ -450,6 +451,42 @@
       font-size: 12px;
       font-weight: 700;
       cursor: pointer;
+    }
+
+    .pagination-btn[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    .pagination-info {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .pagination-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .page-chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .pill {
@@ -582,6 +619,7 @@
       .panel { padding: 16px; }
       .hero { margin-bottom: 20px; }
       .filters input { min-width: 100%; }
+      .pagination-bar { align-items: flex-start; }
     }
   </style>
 </head>
@@ -590,7 +628,7 @@
     <div class="hero">
       <div>
         <h1>Cybersecurity Dashboard</h1>
-        <p>Versão 3.3 com tabela interativa de habilidades, ordenação por coluna, busca textual e seleção integrada.</p>
+        <p>Versão 3.4 com tabela interativa paginada, filtros locais, ordenação por coluna e seleção de skill.</p>
       </div>
       <div id="apiStatus" class="status-pill">
         <span class="status-dot"></span>
@@ -685,6 +723,12 @@
             <select id="categoryFilter">
               <option value="">Todas as categorias</option>
             </select>
+            <select id="pageSizeSelect">
+              <option value="5">5 por página</option>
+              <option value="10" selected>10 por página</option>
+              <option value="15">15 por página</option>
+              <option value="20">20 por página</option>
+            </select>
           </div>
 
           <div class="skills-table-wrap">
@@ -702,6 +746,15 @@
               </thead>
               <tbody id="skillsTableBody"></tbody>
             </table>
+          </div>
+
+          <div class="pagination-bar">
+            <div id="paginationInfo" class="pagination-info">Mostrando 0 de 0</div>
+            <div class="pagination-actions">
+              <button id="prevPageBtn" class="pagination-btn">Anterior</button>
+              <span id="pageChip" class="page-chip">Página 1 de 1</span>
+              <button id="nextPageBtn" class="pagination-btn">Próxima</button>
+            </div>
           </div>
         </div>
 
@@ -799,6 +852,7 @@
     let allSkills = [];
     let selectedSkillId = null;
     let sortState = { key: "progress", direction: "desc" };
+    let currentPage = 1;
 
     function setApiStatus(ok, text) {
       const el = document.getElementById("apiStatus");
@@ -1110,16 +1164,71 @@
       return sorted;
     }
 
+    function getPageSize() {
+      return Number(document.getElementById("pageSizeSelect").value || 10);
+    }
+
+    function getSortedFilteredSkills() {
+      return sortSkills(getFilteredSkills());
+    }
+
+    function getPageCount(items) {
+      const pageSize = getPageSize();
+      return Math.max(1, Math.ceil(items.length / pageSize));
+    }
+
+    function ensureValidPage(totalItems) {
+      const totalPages = getPageCount(new Array(totalItems));
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+    }
+
+    function paginateItems(items) {
+      const pageSize = getPageSize();
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      return {
+        items: items.slice(start, end),
+        start,
+        end: Math.min(end, items.length),
+        total: items.length,
+        totalPages: getPageCount(items)
+      };
+    }
+
+    function renderPaginationMeta(meta) {
+      const info = document.getElementById("paginationInfo");
+      const chip = document.getElementById("pageChip");
+      const prev = document.getElementById("prevPageBtn");
+      const next = document.getElementById("nextPageBtn");
+
+      if (meta.total === 0) {
+        info.textContent = "Mostrando 0 de 0";
+        chip.textContent = "Página 0 de 0";
+        prev.disabled = true;
+        next.disabled = true;
+        return;
+      }
+
+      info.textContent = `Mostrando ${meta.start + 1}-${meta.end} de ${meta.total} habilidade(s)`;
+      chip.textContent = `Página ${currentPage} de ${meta.totalPages}`;
+      prev.disabled = currentPage <= 1;
+      next.disabled = currentPage >= meta.totalPages;
+    }
+
     function renderSkillsTable() {
-      const filtered = getFilteredSkills();
-      const skills = sortSkills(filtered);
-      const tbody = document.getElementById("skillsTableBody");
+      const filteredSorted = getSortedFilteredSkills();
+      ensureValidPage(filteredSorted.length);
+
       const meta = document.getElementById("skillsMeta");
+      const tbody = document.getElementById("skillsTableBody");
       tbody.innerHTML = "";
 
-      meta.textContent = `${skills.length} habilidade(s) exibida(s) · ordenado por ${sortState.key} (${sortState.direction})`;
+      const pageData = paginateItems(filteredSorted);
 
-      if (skills.length === 0) {
+      meta.textContent = `${filteredSorted.length} habilidade(s) filtrada(s) · ordenado por ${sortState.key} (${sortState.direction})`;
+
+      if (filteredSorted.length === 0) {
         tbody.innerHTML = `
           <tr>
             <td colspan="7">
@@ -1127,10 +1236,11 @@
             </td>
           </tr>
         `;
+        renderPaginationMeta(pageData);
         return;
       }
 
-      skills.forEach(skill => {
+      pageData.items.forEach(skill => {
         const percent = Math.round((skill.progress || 0) * 100);
         const badgeClass = progressBadgeClass(skill.progress);
         const badgeLabel = progressBadgeLabel(skill.progress);
@@ -1158,6 +1268,8 @@
 
         tbody.appendChild(tr);
       });
+
+      renderPaginationMeta(pageData);
     }
 
     function renderSelectedSkill() {
@@ -1185,7 +1297,7 @@
       detail.innerHTML = `
         <div class="detail-card">
           <div class="detail-title">${skill.name}</div>
-          <div class="detail-text">Detalhes da habilidade selecionada na tabela interativa.</div>
+          <div class="detail-text">Detalhes da habilidade selecionada na tabela paginada.</div>
 
           <div style="margin-top:12px;">
             <span class="badge-progress ${badgeClass}">${badgeLabel}</span>
@@ -1204,119 +1316,140 @@
               <div class="kv-label">Progresso</div>
               <div class="kv-value">${percent}%</div>
             </div>
-            <div claap[level] !== undefined) map[level] += 1;
-     ">Desafios</div>
-              <div class="kv-value">${(skill.challenges || []).length}</ap[level] !== undefined) map[level] += 1;
-       </div>
+            <div class="kv-row">
+              <div class="kv-label">Desafios</div>
+              <div class="kv-value">${(skill.challenges || []).length}</div>
+            </div>
+          </div>
+        </div>
 
-        <div class="detail-caap[level] !== undefined) map[level] += 1;
-     orks</div>
-          <div class="detail-text">${framewap[level] !== undefined) map[level] += 1;
-     t challenges = skill.challenges ||ap[level] !== undefined) map[level] += 1;
-      undefined) map[level] += 1;
-     fio(s) relacionado(s)`;
+        <div class="detail-card">
+          <div class="detail-title">Frameworks</div>
+          <div class="detail-text">${frameworks}</div>
+        </div>
+      `;
 
-      if (challenges.lengthap[level] !== undefined) map[level] += 1;
-     .disap[level] !== undefined) map[level] += 1;
-     plap[level] !== undefined) map[level] += 1;
-     t = "Essa skill ainda não possui desafios cadastradoap[level] !== undefined) map[level] += 1;
-     bleBody.innerHTap[level] !== undefined) map[level] += 1;
-     {
-        cap[level] !== undefined) map[level] += 1;
-       row.innerap[level] !== undefined) map[level] += 1;
-     }</strong><br><span sap[level] !== undefined) map[level] += 1;
-     allenge.slug || "-"}</ap[level] !== undefined) map[level] += 1;
-     /td>
-          <td>${challap[level] !== undefined) map[level] += 1;
-     atusPill(challenge.statusap[level] !== undefined) map[level] += 1;
-     ppendChild(row);
-      });
+      const challenges = skill.challenges || [];
+      challengeMeta.textContent = `${skill.name} · ${challenges.length} desafio(s) relacionado(s)`;
 
-      challap[level] !== undefined) map[level] += 1;
-     geTableContainer.style.displap[level] !== undefined) map[level] += 1;
-     hboard() {
-      dashbap[level] !== undefined) map[level] += 1;
-     hboard/${USER_ID}`);
-      renderSummary(dashboardap[level] !== undefined) map[level] += 1;
-     || []);
-      renderCoveap[level] !== undefined) map[level] += 1;
-     l] !== undefined) map[level] += 1;
-     recommeap[level] !== undefined) map[level] += 1;
-     n ap[level] !== undefined) map[level] += 1;
-     n(`${API_BASE}/api/users/${USER_ID}/skap[level] !== undefined) map[level] += 1;
-     
-
-      if (!selectedSkillId && allSkills.length > 0) {
-        selectedSkillId = allSkap[level] !== undefined) map[level] += 1;
-     cs();
-      renderSkillsTable();
-      renderSelectedSkill(ap[level] !== undefined) map[level] += 1;
-         const filtered = getFiltap[level] !== undefined) map[level] += 1;
-     );
-      renderCategoryChart(filtered);
-      renderLevelCap[level] !== undefined) map[level] += 1;
-     oryKpis(skills) {
-      const stats = buildCategoryStats(skills);
-      const container = documentap[level] !== undefined) map[level] += 1;
-     ta = document.getElementById("categoryKpiMetap[level] !== undefined) map[level] += 1;
-     ndefined) map[level] += 1;
-     ontainer.innerHTML = '<div class="empty-state">Sem categorias para exibiap[level] !== undefined) map[level] += 1;
-     huma categoria encontrada.";
+      if (challenges.length === 0) {
+        challengeTableContainer.style.display = "none";
+        challengeEmpty.style.display = "block";
+        challengeEmpty.textContent = "Essa skill ainda não possui desafios cadastrados.";
         return;
       }
 
-      meta.textContent = `${stats.length} categoria(s) analisada(s)`;
-
-      stats.slice(0, 6).forEach(ap[level] !== undefined) map[level] += 1;
-     em.avgProgress * 100);
-        const kpi = document.createElement("div");
-        kpi.className = "mini-kpi";
-        kpi.innerHTML = `
-          <div class="mini-kpi-label">${item.category}</ap[level] !== undefined) map[level] += 1;
-     rcent}%</div>
-          <div class="mini-kpi-sub">${item.count} skill(s) · ${item.challenges} desafio(s)</div>
+      challengeTableBody.innerHTML = "";
+      challenges.forEach(challenge => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><strong>${challenge.name}</strong><br><span style="color:var(--muted); font-size:12px;">${challenge.slug || "-"}</span></td>
+          <td>${challenge.platform}</td>
+          <td>${challenge.difficulty || "-"}</td>
+          <td>${statusPill(challenge.status)}</td>
         `;
-        container.appendChild(kpi);
+        challengeTableBody.appendChild(row);
       });
+
+      challengeEmpty.style.display = "none";
+      challengeTableContainer.style.display = "block";
+    }
+
+    async function loadDashboard() {
+      dashboardData = await fetchJson(`${API_BASE}/api/dashboard/${USER_ID}`);
+      renderSummary(dashboardData);
+      renderTracks(dashboardData.tracks || []);
+      renderCoverage(dashboardData.frameworkCoverage || []);
+      renderRecommendations(dashboardData.recommendedChallenges || []);
+    }
+
+    async function loadSkills() {
+      allSkills = await fetchJson(`${API_BASE}/api/users/${USER_ID}/skills`);
+      renderCategoryOptions(allSkills);
+
+      if (!selectedSkillId && allSkills.length > 0) {
+        selectedSkillId = allSkills[0].skillId;
+      }
+
+      rerenderAnalytics();
+      renderSkillsTable();
+      renderSelectedSkill();
+    }
+
+    function rerenderAnalytics() {
+      const filtered = getFilteredSkills();
+      renderCategoryKpis(filtered);
+      renderCategoryChart(filtered);
+      renderLevelChart(filtered);
+    }
+
+    function resetToFirstPage() {
+      currentPage = 1;
+    }
+
+    function rerenderFromFilters() {
+      const filtered = getFilteredSkills();
+      if (!filtered.find(skill => skill.skillId === selectedSkillId)) {
+        selectedSkillId = filtered[0]?.skillId || null;
+      }
+      rerenderAnalytics();
+      renderSkillsTable();
+      renderSelectedSkill();
     }
 
     async function init() {
       const loadingBox = document.getElementById("loadingBox");
       const errorBox = document.getElementById("errorBox");
 
-     ap[level] !== undefined) map[level] += 1;
-     ;
+      try {
+        setApiStatus(true, "API online");
         await loadDashboard();
         await loadSkills();
 
         document.getElementById("summaryGrid").style.display = "grid";
         document.getElementById("mainGrid").style.display = "grid";
-        loadingBox.style.displap[level] !== undefined) map[level] += 1;
-     none";
+        loadingBox.style.display = "none";
+        errorBox.style.display = "none";
         setApiStatus(true, "API conectada");
       } catch (error) {
         loadingBox.style.display = "none";
-        eap[level] !== undefined) map[level] += 1;
-     ox.textContent = "Erro ao carregar dados: " + error.message;
+        errorBox.style.display = "block";
+        errorBox.textContent = "Erro ao carregar dados: " + error.message;
         setApiStatus(false, "Falha na API");
       }
     }
 
-    function rerenderFromFilters() {
-      const filtered = getFilteredSkills();
-      if (!filtered.find(skill => skill.skillId === selectedSkillId)) {
-        selectedSap[level] !== undefined) map[level] += 1;
-           rerenderAnalytics();
+    document.getElementById("levelFilter").addEventListener("change", () => {
+      resetToFirstPage();
+      rerenderFromFilters();
+    });
+
+    document.getElementById("categoryFilter").addEventListener("change", () => {
+      resetToFirstPage();
+      rerenderFromFilters();
+    });
+
+    document.getElementById("searchInput").addEventListener("input", () => {
+      resetToFirstPage();
+      rerenderFromFilters();
+    });
+
+    document.getElementById("pageSizeSelect").addEventListener("change", () => {
+      resetToFirstPage();
       renderSkillsTable();
-      renderSelectedSkill();
-    }
+    });
 
-    document.getElementById("levelFilter").addEventListener("change", rerenderFromFilters);
-    document.getElementById("categoryFilter").addEventListener("change", rerenderFromFilters);
-    document.getElementById("searchInput").addEventListener("input", rerenderFromFilters);
+    document.getElementById("prevPageBtn").addEventListener("click", () => {
+      currentPage -= 1;
+      renderSkillsTable();
+    });
 
-    document.qap[level] !== undefined) map[level] += 1;
-     ").forEach(th => {
+    document.getElementById("nextPageBtn").addEventListener("click", () => {
+      currentPage += 1;
+      renderSkillsTable();
+    });
+
+    document.querySelectorAll("#skillsTable thead th.sortable").forEach(th => {
       th.addEventListener("click", () => {
         const key = th.dataset.sort;
         if (sortState.key === key) {
@@ -1325,6 +1458,7 @@
           sortState.key = key;
           sortState.direction = key === "name" || key === "category" ? "asc" : "desc";
         }
+        resetToFirstPage();
         renderSkillsTable();
       });
     });
