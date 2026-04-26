@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cybersecurity Dashboard v3.6 + login user_id</title>
+  <title>Cybersecurity Dashboard v3.7</title>
   <style>
     :root {
       --bg: #09111f;
@@ -89,6 +89,67 @@
       border-radius: 50%;
       background: currentColor;
       box-shadow: 0 0 16px currentColor;
+    }
+
+    .user-shell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+    }
+
+    .user-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 14px;
+      color: #eaf4ff;
+      background: linear-gradient(135deg, #22d3ee, #8b5cf6);
+      box-shadow: 0 8px 20px rgba(34, 211, 238, 0.2);
+      overflow: hidden;
+    }
+
+    .user-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .user-avatar.has-image img {
+      display: block;
+    }
+
+    .user-avatar.has-image span {
+      display: none;
+    }
+
+    .user-badge-text {
+      display: grid;
+      gap: 2px;
+    }
+
+    .user-badge-name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .user-badge-id {
+      font-size: 12px;
+      color: var(--muted);
     }
 
     .summary-grid {
@@ -221,6 +282,17 @@
 
     .filter-chip strong {
       color: #9fdcf6;
+    }
+
+    .notice-box {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      border: 1px solid rgba(245,158,11,0.24);
+      background: rgba(245,158,11,0.10);
+      color: #fcd34d;
     }
 
     .track-list,
@@ -484,7 +556,8 @@
     .pagination-btn,
     .export-btn,
     .copy-btn,
-    .login-btn {
+    .login-btn,
+    .logout-btn {
       background: rgba(56,189,248,0.12);
       color: #9fdcf6;
       border: 1px solid rgba(56,189,248,0.22);
@@ -513,10 +586,17 @@
       border-color: rgba(139,92,246,0.24);
     }
 
+    .logout-btn {
+      background: rgba(239,68,68,0.12);
+      color: #fecaca;
+      border-color: rgba(239,68,68,0.20);
+    }
+
     .pagination-btn[disabled],
     .export-btn[disabled],
     .copy-btn[disabled],
-    .login-btn[disabled] {
+    .login-btn[disabled],
+    .logout-btn[disabled] {
       opacity: 0.45;
       cursor: not-allowed;
     }
@@ -698,19 +778,34 @@
     <div class="hero">
       <div>
         <h1>Cybersecurity Dashboard</h1>
-        <p>Versão 3.6 com exportação CSV completa, link compartilhável com filtros, chips visuais e login simples por user_id na URL.</p>
+        <p>Versão 3.7 com logout, avatar do usuário e fallback automático quando o user_id não existir.</p>
       </div>
-      <div id="apiStatus" class="status-pill">
+      <div class="status-pill" id="apiStatus">
         <span class="status-dot"></span>
         <span>Conectando à API...</span>
       </div>
     </div>
 
+    <div id="noticeBox" class="notice-box"></div>
+
     <div class="panel" style="margin-bottom: 20px;">
       <div class="panel-header">
         <div>
           <h2 class="panel-title">Acesso rápido</h2>
-          <div class="panel-meta">Simulação de login por user_id via URL.</div>
+          <div class="panel-meta">Simulação de login por user_id via URL com fallback automático.</div>
+        </div>
+
+        <div class="user-shell">
+          <div class="user-badge">
+            <div class="user-avatar" id="userAvatar">
+              <img id="userAvatarImg" alt="Avatar do usuário" />
+              <span id="userAvatarFallback">JD</span>
+            </div>
+            <div class="user-badge-text">
+              <div class="user-badge-name" id="userBadgeName">Usuário</div>
+              <div class="user-badge-id" id="currentUserInfo">Usuário atual: 123</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -718,8 +813,9 @@
         <div class="filters">
           <input id="userIdInput" type="text" placeholder="Digite o user_id. Ex: 123" />
           <button id="loginBtn" class="login-btn">Entrar</button>
+          <button id="logoutBtn" class="logout-btn">Logout</button>
         </div>
-        <div class="panel-meta" id="currentUserInfo">Usuário atual: 123</div>
+        <div class="panel-meta">Ao falhar, o sistema volta automaticamente para o usuário padrão.</div>
       </div>
     </div>
 
@@ -943,7 +1039,8 @@
 
   <script>
     const API_BASE = "https://cyber-dashboard-6a64.onrender.com";
-    let USER_ID = "123";
+    const DEFAULT_USER_ID = "123";
+    let USER_ID = DEFAULT_USER_ID;
 
     let dashboardData = null;
     let allSkills = [];
@@ -977,24 +1074,66 @@
 
     function getUserIdFromUrl() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("user") || "123";
+      return params.get("user") || DEFAULT_USER_ID;
     }
 
     function setUserIdInUrl(userId) {
       const params = new URLSearchParams(window.location.search);
-
-      if (userId) {
-        params.set("user", userId);
-      } else {
-        params.delete("user");
-      }
+      if (userId) params.set("user", userId);
+      else params.delete("user");
 
       const query = params.toString();
-      const newUrl = query
-        ? `${window.location.pathname}?${query}`
-        : window.location.pathname;
-
+      const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
       history.replaceState({}, "", newUrl);
+    }
+
+    function clearNotice() {
+      const notice = document.getElementById("noticeBox");
+      notice.style.display = "none";
+      notice.textContent = "";
+    }
+
+    function showNotice(message) {
+      const notice = document.getElementById("noticeBox");
+      notice.textContent = message;
+      notice.style.display = "block";
+    }
+
+    function getInitials(name, userId) {
+      const base = (name || userId || "User").trim();
+      const parts = base.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
+    function renderUserBadge(user) {
+      const name = user?.name || "Usuário";
+      const userId = user?.id || USER_ID;
+      const initials = getInitials(name, userId);
+      const avatarWrap = document.getElementById("userAvatar");
+      const avatarImg = document.getElementById("userAvatarImg");
+      const avatarFallback = document.getElementById("userAvatarFallback");
+      const badgeName = document.getElementById("userBadgeName");
+      const badgeId = document.getElementById("currentUserInfo");
+
+      badgeName.textContent = name;
+      badgeId.textContent = `Usuário atual: ${userId}`;
+      avatarFallback.textContent = initials;
+      avatarImg.removeAttribute("src");
+      avatarImg.alt = `Avatar de ${name}`;
+      avatarWrap.classList.remove("has-image");
+
+      const avatarUrl = user?.avatarUrl;
+      if (avatarUrl) {
+        avatarImg.src = avatarUrl;
+        avatarImg.alt = `Avatar de ${name}`;
+        avatarImg.onerror = () => {
+          avatarWrap.classList.remove("has-image");
+        };
+        avatarImg.onload = () => {
+          avatarWrap.classList.add("has-image");
+        };
+      }
     }
 
     function barClass(index) {
@@ -1029,6 +1168,7 @@
       document.getElementById("xp").textContent = data.summary?.xp ?? "-";
       const coverage = data.frameworkCoverage?.[0];
       document.getElementById("cisCoverage").textContent = coverage ? `${coverage.controlsCovered}/${coverage.controlsTotal}` : "-";
+      renderUserBadge(data.user);
     }
 
     function renderTracks(tracks) {
@@ -1355,7 +1495,6 @@
 
     function exportFilteredCsv() {
       const items = getSortedFilteredSkills();
-
       if (!items.length) return;
 
       const rows = [
@@ -1375,17 +1514,12 @@
         ]);
       });
 
-      const csvContent = rows
-        .map(row => row.map(escapeCsvValue).join(","))
-        .join("\n");
-
+      const csvContent = rows.map(row => row.map(escapeCsvValue).join(",")).join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const fileName = `skills-user-${USER_ID}-filtered-total-${items.length}.csv`;
-
       a.href = url;
-      a.download = fileName;
+      a.download = `skills-user-${USER_ID}-filtered-total-${items.length}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1430,9 +1564,7 @@
       chipItems.push(`Itens/página: <strong>${pageSize}</strong>`);
       chipItems.push(`Ordenação: <strong>${sortState.key} (${sortState.direction})</strong>`);
 
-      chips.innerHTML = chipItems
-        .map(item => `<span class="filter-chip">${item}</span>`)
-        .join("");
+      chips.innerHTML = chipItems.map(item => `<span class="filter-chip">${item}</span>`).join("");
     }
 
     function syncUrlState() {
@@ -1442,7 +1574,9 @@
       const category = document.getElementById("categoryFilter").value;
       const pageSize = document.getElementById("pageSizeSelect").value;
 
-      if (USER_ID) params.set("user", USER_ID); else params.delete("user");
+      if (USER_ID) params.set("user", USER_ID);
+      else params.delete("user");
+
       if (search) params.set("search", search); else params.delete("search");
       if (level) params.set("level", level); else params.delete("level");
       if (category) params.set("category", category); else params.delete("category");
@@ -1452,11 +1586,9 @@
       params.set("direction", sortState.direction);
 
       const query = params.toString();
-      const newUrl = query
-        ? `${window.location.pathname}?${query}`
-        : window.location.pathname;
-
+      const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
       history.replaceState({}, "", newUrl);
+
       renderActiveChips();
       document.getElementById("currentUserInfo").textContent = `Usuário atual: ${USER_ID}`;
     }
@@ -1464,7 +1596,7 @@
     function applyUrlState() {
       const params = new URLSearchParams(window.location.search);
 
-      USER_ID = params.get("user") || "123";
+      USER_ID = params.get("user") || DEFAULT_USER_ID;
 
       const search = params.get("search") || "";
       const level = params.get("level") || "";
@@ -1576,7 +1708,7 @@
       detail.innerHTML = `
         <div class="detail-card">
           <div class="detail-title">${skill.name}</div>
-          <div class="detail-text">Detalhes da habilidade selecionada na tabela interativa com login simples por user_id.</div>
+          <div class="detail-text">Detalhes da habilidade selecionada na tabela interativa com fallback automático de usuário.</div>
 
           <div style="margin-top:12px;">
             <span class="badge-progress ${badgeClass}">${badgeLabel}</span>
@@ -1638,32 +1770,77 @@
       challengeTableContainer.style.display = "block";
     }
 
-    async function loadDashboard() {
-      dashboardData = await fetchJson(`${API_BASE}/api/dashboard/${USER_ID}`);
-      renderSummary(dashboardData);
-      renderTracks(dashboardData.tracks || []);
-      renderCoverage(dashboardData.frameworkCoverage || []);
-      renderRecommendations(dashboardData.recommendedChallenges || []);
+    async function loadDashboardForUser(userId) {
+      return fetchJson(`${API_BASE}/api/dashboard/${userId}`);
     }
 
-    async function loadSkills(initialCategoryFromUrl = "") {
-      allSkills = await fetchJson(`${API_BASE}/api/users/${USER_ID}/skills`);
-      renderCategoryOptions(allSkills);
+    async function loadSkillsForUser(userId) {
+      return fetchJson(`${API_BASE}/api/users/${userId}/skills`);
+    }
 
-      if (initialCategoryFromUrl) {
-        const categories = [...new Set(allSkills.map(skill => skill.category).filter(Boolean))];
-        if (categories.includes(initialCategoryFromUrl)) {
-          document.getElementById("categoryFilter").value = initialCategoryFromUrl;
+    async function loadAllForUser(userId, initialCategoryFromUrl = "") {
+      clearNotice();
+
+      try {
+        const dashboard = await loadDashboardForUser(userId);
+        const skills = await loadSkillsForUser(userId);
+
+        dashboardData = dashboard;
+        allSkills = skills;
+        USER_ID = userId;
+
+        renderSummary(dashboardData);
+        renderTracks(dashboardData.tracks || []);
+        renderCoverage(dashboardData.frameworkCoverage || []);
+        renderRecommendations(dashboardData.recommendedChallenges || []);
+        renderCategoryOptions(allSkills);
+
+        if (initialCategoryFromUrl) {
+          const categories = [...new Set(allSkills.map(skill => skill.category).filter(Boolean))];
+          if (categories.includes(initialCategoryFromUrl)) {
+            document.getElementById("categoryFilter").value = initialCategoryFromUrl;
+          }
         }
-      }
 
-      if (!selectedSkillId && allSkills.length > 0) {
-        selectedSkillId = allSkills[0].skillId;
-      }
+        if (!selectedSkillId && allSkills.length > 0) {
+          selectedSkillId = allSkills[0].skillId;
+        }
 
-      rerenderAnalytics();
-      renderSkillsTable();
-      renderSelectedSkill();
+        rerenderAnalytics();
+        renderSkillsTable();
+        renderSelectedSkill();
+        document.getElementById("userIdInput").value = USER_ID;
+        return true;
+      } catch (error) {
+        if (userId !== DEFAULT_USER_ID) {
+          showNotice(`Usuário "${userId}" não encontrado. O dashboard voltou automaticamente para o usuário padrão ${DEFAULT_USER_ID}.`);
+          USER_ID = DEFAULT_USER_ID;
+          setUserIdInUrl(USER_ID);
+
+          const dashboard = await loadDashboardForUser(DEFAULT_USER_ID);
+          const skills = await loadSkillsForUser(DEFAULT_USER_ID);
+
+          dashboardData = dashboard;
+          allSkills = skills;
+          renderSummary(dashboardData);
+          renderTracks(dashboardData.tracks || []);
+          renderCoverage(dashboardData.frameworkCoverage || []);
+          renderRecommendations(dashboardData.recommendedChallenges || []);
+          renderCategoryOptions(allSkills);
+
+          if (!selectedSkillId && allSkills.length > 0) {
+            selectedSkillId = allSkills[0].skillId;
+          }
+
+          rerenderAnalytics();
+          renderSkillsTable();
+          renderSelectedSkill();
+          document.getElementById("userIdInput").value = USER_ID;
+          return true;
+        }
+
+        throw error;
+      }
     }
 
     function rerenderAnalytics() {
@@ -1695,20 +1872,18 @@
 
       if (!nextUserId) return;
 
-      USER_ID = nextUserId;
-      currentPage = 1;
+      resetToFirstPage();
       selectedSkillId = null;
-      setUserIdInUrl(USER_ID);
+      setUserIdInUrl(nextUserId);
 
       document.getElementById("summaryGrid").style.display = "none";
       document.getElementById("mainGrid").style.display = "none";
       loadingBox.style.display = "block";
       errorBox.style.display = "none";
-      document.getElementById("currentUserInfo").textContent = `Usuário atual: ${USER_ID}`;
+      clearNotice();
 
       try {
-        await loadDashboard();
-        await loadSkills(document.getElementById("categoryFilter").value || "");
+        await loadAllForUser(nextUserId, document.getElementById("categoryFilter").value || "");
         document.getElementById("summaryGrid").style.display = "grid";
         document.getElementById("mainGrid").style.display = "grid";
         loadingBox.style.display = "none";
@@ -1721,16 +1896,49 @@
       }
     }
 
+    async function logoutUser() {
+      document.getElementById("userIdInput").value = DEFAULT_USER_ID;
+      clearNotice();
+      showNotice(`Logout realizado. O dashboard voltou para o usuário padrão ${DEFAULT_USER_ID}.`);
+      await loginWithForcedUser(DEFAULT_USER_ID);
+    }
+
+    async function loginWithForcedUser(userId) {
+      const loadingBox = document.getElementById("loadingBox");
+      const errorBox = document.getElementById("errorBox");
+
+      resetToFirstPage();
+      selectedSkillId = null;
+      setUserIdInUrl(userId);
+
+      document.getElementById("summaryGrid").style.display = "none";
+      document.getElementById("mainGrid").style.display = "none";
+      loadingBox.style.display = "block";
+      errorBox.style.display = "none";
+
+      try {
+        await loadAllForUser(userId, "");
+        document.getElementById("summaryGrid").style.display = "grid";
+        document.getElementById("mainGrid").style.display = "grid";
+        loadingBox.style.display = "none";
+        setApiStatus(true, "API conectada");
+      } catch (error) {
+        loadingBox.style.display = "none";
+        errorBox.style.display = "block";
+        errorBox.textContent = "Erro ao restaurar usuário padrão: " + error.message;
+        setApiStatus(false, "Falha na API");
+      }
+    }
+
     async function init() {
       const loadingBox = document.getElementById("loadingBox");
       const errorBox = document.getElementById("errorBox");
 
       try {
         const urlState = applyUrlState();
-
         setApiStatus(true, "API online");
-        await loadDashboard();
-        await loadSkills(urlState.category);
+
+        await loadAllForUser(USER_ID, urlState.category);
 
         document.getElementById("summaryGrid").style.display = "grid";
         document.getElementById("mainGrid").style.display = "grid";
@@ -1746,10 +1954,10 @@
     }
 
     document.getElementById("loginBtn").addEventListener("click", loginWithUserId);
+    document.getElementById("logoutBtn").addEventListener("click", logoutUser);
+
     document.getElementById("userIdInput").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        loginWithUserId();
-      }
+      if (event.key === "Enter") loginWithUserId();
     });
 
     document.getElementById("levelFilter").addEventListener("change", () => {
