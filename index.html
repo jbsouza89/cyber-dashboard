@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cybersecurity Dashboard v3</title>
+  <title>Cybersecurity Dashboard v3.1</title>
   <style>
     :root {
       --bg: #09111f;
@@ -29,9 +29,7 @@
       --radius-sm: 10px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html, body {
       margin: 0;
@@ -44,9 +42,7 @@
       color: var(--text);
     }
 
-    body {
-      min-height: 100vh;
-    }
+    body { min-height: 100vh; }
 
     .container {
       width: min(1320px, calc(100% - 32px));
@@ -148,9 +144,7 @@
       box-shadow: var(--shadow);
     }
 
-    .panel + .panel {
-      margin-top: 20px;
-    }
+    .panel + .panel { margin-top: 20px; }
 
     .panel-header {
       display: flex;
@@ -188,19 +182,24 @@
       outline: none;
     }
 
-    .track-list {
+    .track-list,
+    .recommend-list,
+    .category-chart-list {
       display: grid;
       gap: 14px;
     }
 
-    .track-card {
+    .track-card,
+    .recommend-card,
+    .category-bar-card {
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.05);
       border-radius: var(--radius-md);
       padding: 14px;
     }
 
-    .track-top {
+    .track-top,
+    .category-top {
       display: flex;
       justify-content: space-between;
       gap: 12px;
@@ -208,12 +207,14 @@
       margin-bottom: 10px;
     }
 
-    .track-name {
+    .track-name,
+    .category-name {
       font-size: 16px;
       font-weight: 700;
     }
 
-    .track-value {
+    .track-value,
+    .category-value {
       color: var(--muted);
       font-size: 13px;
       font-weight: 600;
@@ -286,6 +287,36 @@
       color: var(--muted);
       font-size: 12px;
       white-space: nowrap;
+    }
+
+    .badge-progress {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 86px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .badge-progress.high {
+      background: rgba(34,197,94,0.12);
+      color: #9ee6b3;
+      border-color: rgba(34,197,94,0.20);
+    }
+
+    .badge-progress.medium {
+      background: rgba(56,189,248,0.12);
+      color: #9fdcf6;
+      border-color: rgba(56,189,248,0.20);
+    }
+
+    .badge-progress.low {
+      background: rgba(148,163,184,0.12);
+      color: #d3dbeb;
+      border-color: rgba(148,163,184,0.18);
     }
 
     .skill-meta,
@@ -487,18 +518,6 @@
       border-color: rgba(148,163,184,0.16);
     }
 
-    .recommend-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .recommend-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: var(--radius-md);
-      padding: 14px;
-    }
-
     .recommend-title {
       font-size: 15px;
       font-weight: 700;
@@ -550,23 +569,13 @@
     }
 
     @media (max-width: 1100px) {
-      .main-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .side-stack {
-        position: static;
-      }
+      .main-grid { grid-template-columns: 1fr; }
+      .side-stack { position: static; }
     }
 
     @media (max-width: 820px) {
-      .summary-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .skills-grid {
-        grid-template-columns: 1fr;
-      }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .skills-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 560px) {
@@ -575,17 +584,9 @@
         padding-top: 18px;
       }
 
-      .summary-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .panel {
-        padding: 16px;
-      }
-
-      .hero {
-        margin-bottom: 20px;
-      }
+      .summary-grid { grid-template-columns: 1fr; }
+      .panel { padding: 16px; }
+      .hero { margin-bottom: 20px; }
     }
   </style>
 </head>
@@ -594,7 +595,7 @@
     <div class="hero">
       <div>
         <h1>Cybersecurity Dashboard</h1>
-        <p>Versão 3 com visão executiva, filtros, skills clicáveis, detalhamento de desafios e cobertura CIS.</p>
+        <p>Versão 3.1 com gráfico de barras por categoria, badges de progresso por skill e visão mais analítica.</p>
       </div>
       <div id="apiStatus" class="status-pill">
         <span class="status-dot"></span>
@@ -641,6 +642,16 @@
             </div>
           </div>
           <div id="tracks" class="track-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Progresso por categoria</h2>
+              <div id="categoryMeta" class="panel-meta">Calculado a partir das skills carregadas.</div>
+            </div>
+          </div>
+          <div id="categoryChart" class="category-chart-list"></div>
         </div>
 
         <div class="panel">
@@ -802,6 +813,20 @@
       return '<span class="pill todo">Não iniciado</span>';
     }
 
+    function progressBadgeClass(progress) {
+      const percent = Math.round((progress || 0) * 100);
+      if (percent >= 70) return "high";
+      if (percent >= 40) return "medium";
+      return "low";
+    }
+
+    function progressBadgeLabel(progress) {
+      const percent = Math.round((progress || 0) * 100);
+      if (percent >= 70) return "Forte";
+      if (percent >= 40) return "Evoluindo";
+      return "Inicial";
+    }
+
     function renderSummary(data) {
       document.getElementById("userName").textContent = data.user?.name || "-";
       document.getElementById("overallProgress").textContent = Math.round((data.summary?.overallProgress || 0) * 100) + "%";
@@ -828,6 +853,69 @@
           </div>
           <div class="bar">
             <div class="bar-fill ${barClass(index)}" style="width:${percent}%"></div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function buildCategoryStats(skills) {
+      const map = {};
+
+      (skills || []).forEach(skill => {
+        const category = skill.category || "sem-categoria";
+        if (!map[category]) {
+          map[category] = {
+            category,
+            totalProgress: 0,
+            count: 0,
+            challenges: 0
+          };
+        }
+
+        map[category].totalProgress += skill.progress || 0;
+        map[category].count += 1;
+        map[category].challenges += (skill.challenges || []).length;
+      });
+
+      return Object.values(map)
+        .map(item => ({
+          ...item,
+          avgProgress: item.count ? item.totalProgress / item.count : 0
+        }))
+        .sort((a, b) => b.avgProgress - a.avgProgress);
+    }
+
+    function renderCategoryChart(skills) {
+      const stats = buildCategoryStats(skills);
+      const container = document.getElementById("categoryChart");
+      const meta = document.getElementById("categoryMeta");
+
+      container.innerHTML = "";
+
+      if (stats.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sem dados de categoria para exibir.</div>';
+        meta.textContent = "Nenhuma categoria encontrada.";
+        return;
+      }
+
+      meta.textContent = `${stats.length} categoria(s) calculada(s) a partir das skills`;
+
+      stats.forEach((item, index) => {
+        const percent = Math.round(item.avgProgress * 100);
+        const card = document.createElement("div");
+        card.className = "category-bar-card";
+        card.innerHTML = `
+          <div class="category-top">
+            <div class="category-name">${item.category}</div>
+            <div class="category-value">${percent}% médio</div>
+          </div>
+          <div class="bar">
+            <div class="bar-fill ${barClass(index)}" style="width:${percent}%"></div>
+          </div>
+          <div class="skill-foot" style="margin-top:10px;">
+            <span>${item.count} skill(s)</span>
+            <span>${item.challenges} desafio(s)</span>
           </div>
         `;
         container.appendChild(card);
@@ -917,20 +1005,32 @@
       skills.forEach((skill, index) => {
         const percent = Math.round((skill.progress || 0) * 100);
         const frameworks = (skill.frameworks || []).map(f => f.code).join(", ") || "Sem framework";
+        const badgeClass = progressBadgeClass(skill.progress);
+        const badgeLabel = progressBadgeLabel(skill.progress);
+
         const card = document.createElement("div");
         card.className = "skill-card" + (skill.skillId === selectedSkillId ? " active" : "");
         card.innerHTML = `
           <div class="skill-head">
-            <div class="skill-name">${skill.name}</div>
+            <div>
+              <div class="skill-name">${skill.name}</div>
+            </div>
             <div class="badge">Nível ${skill.level}</div>
           </div>
+
           <div class="skill-meta">Categoria: ${skill.category} · Frameworks: ${frameworks}</div>
+
           <div class="bar">
             <div class="bar-fill ${barClass(index)}" style="width:${percent}%"></div>
           </div>
+
           <div class="skill-foot">
             <span>${percent}% concluído</span>
             <span>${(skill.challenges || []).length} desafio(s)</span>
+          </div>
+
+          <div style="margin-top:12px;">
+            <span class="badge-progress ${badgeClass}">${badgeLabel}</span>
           </div>
         `;
 
@@ -963,12 +1063,18 @@
 
       const percent = Math.round((skill.progress || 0) * 100);
       const frameworks = (skill.frameworks || []).map(f => `${f.code} — ${f.name}`).join("<br>") || "Sem frameworks vinculados.";
+      const badgeClass = progressBadgeClass(skill.progress);
+      const badgeLabel = progressBadgeLabel(skill.progress);
 
       detail.innerHTML = `
         <div class="detail-card">
           <div class="detail-title">${skill.name}</div>
           <div class="detail-text">
             Skill selecionada com progresso, frameworks e desafios relacionados.
+          </div>
+
+          <div style="margin-top:12px;">
+            <span class="badge-progress ${badgeClass}">${badgeLabel}</span>
           </div>
 
           <div class="kv">
@@ -1034,6 +1140,7 @@
     async function loadSkills() {
       allSkills = await fetchJson(`${API_BASE}/api/users/${USER_ID}/skills`);
       renderCategoryOptions(allSkills);
+      renderCategoryChart(allSkills);
 
       if (!selectedSkillId && allSkills.length > 0) {
         selectedSkillId = allSkills[0].skillId;
@@ -1065,23 +1172,20 @@
       }
     }
 
-    document.getElementById("levelFilter").addEventListener("change", () => {
+    function rerenderFromFilters() {
       const filtered = getFilteredSkills();
-      if (!filtered.find(skill => skill.skillId === selectedSkillId)) {
-        selectedSkillId = filtered[0]?.skillId || null;
-      }
-      renderSkills();
-      renderSelectedSkill();
-    });
 
-    document.getElementById("categoryFilter").addEventListener("change", () => {
-      const filtered = getFilteredSkills();
       if (!filtered.find(skill => skill.skillId === selectedSkillId)) {
         selectedSkillId = filtered[0]?.skillId || null;
       }
+
       renderSkills();
       renderSelectedSkill();
-    });
+      renderCategoryChart(filtered);
+    }
+
+    document.getElementById("levelFilter").addEventListener("change", rerenderFromFilters);
+    document.getElementById("categoryFilter").addEventListener("change", rerenderFromFilters);
 
     init();
   </script>
