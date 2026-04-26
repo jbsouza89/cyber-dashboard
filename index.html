@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cybersecurity Dashboard v3.6</title>
+  <title>Cybersecurity Dashboard v3.6 + login user_id</title>
   <style>
     :root {
       --bg: #09111f;
@@ -483,7 +483,8 @@
     .skills-action-btn,
     .pagination-btn,
     .export-btn,
-    .copy-btn {
+    .copy-btn,
+    .login-btn {
       background: rgba(56,189,248,0.12);
       color: #9fdcf6;
       border: 1px solid rgba(56,189,248,0.22);
@@ -506,9 +507,16 @@
       border-color: rgba(245,158,11,0.22);
     }
 
+    .login-btn {
+      background: rgba(139,92,246,0.14);
+      color: #d6c7ff;
+      border-color: rgba(139,92,246,0.24);
+    }
+
     .pagination-btn[disabled],
     .export-btn[disabled],
-    .copy-btn[disabled] {
+    .copy-btn[disabled],
+    .login-btn[disabled] {
       opacity: 0.45;
       cursor: not-allowed;
     }
@@ -690,11 +698,28 @@
     <div class="hero">
       <div>
         <h1>Cybersecurity Dashboard</h1>
-        <p>Versão 3.6 com exportação CSV completa, link compartilhável com filtros e chips visuais para estado ativo da tabela.</p>
+        <p>Versão 3.6 com exportação CSV completa, link compartilhável com filtros, chips visuais e login simples por user_id na URL.</p>
       </div>
       <div id="apiStatus" class="status-pill">
         <span class="status-dot"></span>
         <span>Conectando à API...</span>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom: 20px;">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">Acesso rápido</h2>
+          <div class="panel-meta">Simulação de login por user_id via URL.</div>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <div class="filters">
+          <input id="userIdInput" type="text" placeholder="Digite o user_id. Ex: 123" />
+          <button id="loginBtn" class="login-btn">Entrar</button>
+        </div>
+        <div class="panel-meta" id="currentUserInfo">Usuário atual: 123</div>
       </div>
     </div>
 
@@ -918,7 +943,7 @@
 
   <script>
     const API_BASE = "https://cyber-dashboard-6a64.onrender.com";
-    const USER_ID = "123";
+    let USER_ID = "123";
 
     let dashboardData = null;
     let allSkills = [];
@@ -948,6 +973,28 @@
         throw new Error("Erro HTTP " + response.status);
       }
       return response.json();
+    }
+
+    function getUserIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("user") || "123";
+    }
+
+    function setUserIdInUrl(userId) {
+      const params = new URLSearchParams(window.location.search);
+
+      if (userId) {
+        params.set("user", userId);
+      } else {
+        params.delete("user");
+      }
+
+      const query = params.toString();
+      const newUrl = query
+        ? `${window.location.pathname}?${query}`
+        : window.location.pathname;
+
+      history.replaceState({}, "", newUrl);
     }
 
     function barClass(index) {
@@ -1298,12 +1345,6 @@
       exportBtn.disabled = false;
     }
 
-    function getCurrentPageItems() {
-      const filteredSorted = getSortedFilteredSkills();
-      ensureValidPage(filteredSorted.length);
-      return paginateItems(filteredSorted).items;
-    }
-
     function escapeCsvValue(value) {
       const str = String(value ?? "");
       if (str.includes('"') || str.includes(",") || str.includes("\n")) {
@@ -1318,7 +1359,7 @@
       if (!items.length) return;
 
       const rows = [
-        ["skill", "categoria", "nivel", "progresso_percentual", "desafios", "status"]
+        ["skill", "categoria", "nivel", "progresso_percentual", "desafios", "status", "user_id"]
       ];
 
       items.forEach(skill => {
@@ -1329,7 +1370,8 @@
           skill.level ?? "",
           percent,
           (skill.challenges || []).length,
-          progressBadgeLabel(skill.progress)
+          progressBadgeLabel(skill.progress),
+          USER_ID
         ]);
       });
 
@@ -1340,7 +1382,7 @@
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const fileName = `skills-filtered-total-${items.length}.csv`;
+      const fileName = `skills-user-${USER_ID}-filtered-total-${items.length}.csv`;
 
       a.href = url;
       a.download = fileName;
@@ -1380,7 +1422,7 @@
       const pageSize = document.getElementById("pageSizeSelect").value;
 
       const chipItems = [];
-
+      chipItems.push(`Usuário: <strong>${USER_ID}</strong>`);
       if (search) chipItems.push(`Busca: <strong>${search}</strong>`);
       if (level) chipItems.push(`Nível: <strong>${level}</strong>`);
       if (category) chipItems.push(`Categoria: <strong>${category}</strong>`);
@@ -1400,6 +1442,7 @@
       const category = document.getElementById("categoryFilter").value;
       const pageSize = document.getElementById("pageSizeSelect").value;
 
+      if (USER_ID) params.set("user", USER_ID); else params.delete("user");
       if (search) params.set("search", search); else params.delete("search");
       if (level) params.set("level", level); else params.delete("level");
       if (category) params.set("category", category); else params.delete("category");
@@ -1415,10 +1458,13 @@
 
       history.replaceState({}, "", newUrl);
       renderActiveChips();
+      document.getElementById("currentUserInfo").textContent = `Usuário atual: ${USER_ID}`;
     }
 
     function applyUrlState() {
       const params = new URLSearchParams(window.location.search);
+
+      USER_ID = params.get("user") || "123";
 
       const search = params.get("search") || "";
       const level = params.get("level") || "";
@@ -1428,6 +1474,8 @@
       const sort = params.get("sort") || "progress";
       const direction = params.get("direction") || "desc";
 
+      document.getElementById("userIdInput").value = USER_ID;
+      document.getElementById("currentUserInfo").textContent = `Usuário atual: ${USER_ID}`;
       document.getElementById("searchInput").value = search;
       document.getElementById("levelFilter").value = ["", "1", "2", "3"].includes(level) ? level : "";
       document.getElementById("pageSizeSelect").value = ["5", "10", "15", "20"].includes(pageSize) ? pageSize : "10";
@@ -1455,7 +1503,7 @@
 
       const pageData = paginateItems(filteredSorted);
 
-      meta.textContent = `${filteredSorted.length} habilidade(s) filtrada(s) · ordenado por ${sortState.key} (${sortState.direction})`;
+      meta.textContent = `${filteredSorted.length} habilidade(s) filtrada(s) · usuário ${USER_ID} · ordenado por ${sortState.key} (${sortState.direction})`;
 
       if (filteredSorted.length === 0) {
         tbody.innerHTML = `
@@ -1528,13 +1576,17 @@
       detail.innerHTML = `
         <div class="detail-card">
           <div class="detail-title">${skill.name}</div>
-          <div class="detail-text">Detalhes da habilidade selecionada na tabela interativa com link compartilhável.</div>
+          <div class="detail-text">Detalhes da habilidade selecionada na tabela interativa com login simples por user_id.</div>
 
           <div style="margin-top:12px;">
             <span class="badge-progress ${badgeClass}">${badgeLabel}</span>
           </div>
 
           <div class="kv">
+            <div class="kv-row">
+              <div class="kv-label">Usuário</div>
+              <div class="kv-value">${USER_ID}</div>
+            </div>
             <div class="kv-row">
               <div class="kv-label">Categoria</div>
               <div class="kv-value">${skill.category}</div>
@@ -1561,7 +1613,7 @@
       `;
 
       const challenges = skill.challenges || [];
-      challengeMeta.textContent = `${skill.name} · ${challenges.length} desafio(s) relacionado(s)`;
+      challengeMeta.textContent = `${skill.name} · usuário ${USER_ID} · ${challenges.length} desafio(s) relacionado(s)`;
 
       if (challenges.length === 0) {
         challengeTableContainer.style.display = "none";
@@ -1635,6 +1687,40 @@
       renderSelectedSkill();
     }
 
+    async function loginWithUserId() {
+      const input = document.getElementById("userIdInput");
+      const nextUserId = input.value.trim();
+      const loadingBox = document.getElementById("loadingBox");
+      const errorBox = document.getElementById("errorBox");
+
+      if (!nextUserId) return;
+
+      USER_ID = nextUserId;
+      currentPage = 1;
+      selectedSkillId = null;
+      setUserIdInUrl(USER_ID);
+
+      document.getElementById("summaryGrid").style.display = "none";
+      document.getElementById("mainGrid").style.display = "none";
+      loadingBox.style.display = "block";
+      errorBox.style.display = "none";
+      document.getElementById("currentUserInfo").textContent = `Usuário atual: ${USER_ID}`;
+
+      try {
+        await loadDashboard();
+        await loadSkills(document.getElementById("categoryFilter").value || "");
+        document.getElementById("summaryGrid").style.display = "grid";
+        document.getElementById("mainGrid").style.display = "grid";
+        loadingBox.style.display = "none";
+        setApiStatus(true, "API conectada");
+      } catch (error) {
+        loadingBox.style.display = "none";
+        errorBox.style.display = "block";
+        errorBox.textContent = "Erro ao carregar usuário: " + error.message;
+        setApiStatus(false, "Falha na API");
+      }
+    }
+
     async function init() {
       const loadingBox = document.getElementById("loadingBox");
       const errorBox = document.getElementById("errorBox");
@@ -1658,6 +1744,13 @@
         setApiStatus(false, "Falha na API");
       }
     }
+
+    document.getElementById("loginBtn").addEventListener("click", loginWithUserId);
+    document.getElementById("userIdInput").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        loginWithUserId();
+      }
+    });
 
     document.getElementById("levelFilter").addEventListener("change", () => {
       resetToFirstPage();
