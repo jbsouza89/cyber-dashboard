@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cybersecurity Dashboard v3.5</title>
+  <title>Cybersecurity Dashboard v3.6</title>
   <style>
     :root {
       --bg: #09111f;
@@ -66,7 +66,7 @@
     .hero p {
       margin: 10px 0 0;
       color: var(--muted);
-      max-width: 780px;
+      max-width: 820px;
       font-size: 15px;
     }
 
@@ -190,13 +190,37 @@
       align-items: center;
       gap: 12px;
       flex-wrap: wrap;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
 
     .toolbar-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+    }
+
+    .filter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .filter-chip strong {
+      color: #9fdcf6;
     }
 
     .track-list,
@@ -458,7 +482,8 @@
 
     .skills-action-btn,
     .pagination-btn,
-    .export-btn {
+    .export-btn,
+    .copy-btn {
       background: rgba(56,189,248,0.12);
       color: #9fdcf6;
       border: 1px solid rgba(56,189,248,0.22);
@@ -475,8 +500,15 @@
       border-color: rgba(34,197,94,0.22);
     }
 
+    .copy-btn {
+      background: rgba(245,158,11,0.12);
+      color: #fcd34d;
+      border-color: rgba(245,158,11,0.22);
+    }
+
     .pagination-btn[disabled],
-    .export-btn[disabled] {
+    .export-btn[disabled],
+    .copy-btn[disabled] {
       opacity: 0.45;
       cursor: not-allowed;
     }
@@ -584,6 +616,13 @@
       line-height: 1.5;
     }
 
+    .copy-feedback {
+      color: #9ee6b3;
+      font-size: 12px;
+      font-weight: 700;
+      min-height: 18px;
+    }
+
     .empty-state {
       padding: 20px;
       border-radius: var(--radius-md);
@@ -651,7 +690,7 @@
     <div class="hero">
       <div>
         <h1>Cybersecurity Dashboard</h1>
-        <p>Versão 3.5 com exportação CSV da tabela paginada e persistência de filtros diretamente na URL.</p>
+        <p>Versão 3.6 com exportação CSV completa, link compartilhável com filtros e chips visuais para estado ativo da tabela.</p>
       </div>
       <div id="apiStatus" class="status-pill">
         <span class="status-dot"></span>
@@ -756,9 +795,13 @@
             </div>
 
             <div class="toolbar-actions">
-              <button id="exportCsvBtn" class="export-btn">Exportar CSV da página</button>
+              <button id="exportCsvBtn" class="export-btn">Exportar CSV completo</button>
+              <button id="copyLinkBtn" class="copy-btn">Copiar link com filtros</button>
             </div>
           </div>
+
+          <div id="activeChips" class="filter-chips"></div>
+          <div id="copyFeedback" class="copy-feedback"></div>
 
           <div class="skills-table-wrap">
             <table id="skillsTable">
@@ -882,6 +925,7 @@
     let selectedSkillId = null;
     let sortState = { key: "progress", direction: "desc" };
     let currentPage = 1;
+    let copyFeedbackTimer = null;
 
     function setApiStatus(ok, text) {
       const el = document.getElementById("apiStatus");
@@ -1268,8 +1312,8 @@
       return str;
     }
 
-    function exportCurrentPageCsv() {
-      const items = getCurrentPageItems();
+    function exportFilteredCsv() {
+      const items = getSortedFilteredSkills();
 
       if (!items.length) return;
 
@@ -1296,7 +1340,7 @@
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const fileName = `skills-page-${currentPage}.csv`;
+      const fileName = `skills-filtered-total-${items.length}.csv`;
 
       a.href = url;
       a.download = fileName;
@@ -1304,6 +1348,49 @@
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    }
+
+    function buildShareUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    }
+
+    async function copyLinkWithFilters() {
+      const feedback = document.getElementById("copyFeedback");
+      const url = buildShareUrl();
+
+      try {
+        await navigator.clipboard.writeText(url);
+        feedback.textContent = "Link copiado com sucesso.";
+      } catch (error) {
+        feedback.textContent = "Falha ao copiar link automaticamente.";
+      }
+
+      clearTimeout(copyFeedbackTimer);
+      copyFeedbackTimer = setTimeout(() => {
+        feedback.textContent = "";
+      }, 2500);
+    }
+
+    function renderActiveChips() {
+      const chips = document.getElementById("activeChips");
+      const search = document.getElementById("searchInput").value.trim();
+      const level = document.getElementById("levelFilter").value;
+      const category = document.getElementById("categoryFilter").value;
+      const pageSize = document.getElementById("pageSizeSelect").value;
+
+      const chipItems = [];
+
+      if (search) chipItems.push(`Busca: <strong>${search}</strong>`);
+      if (level) chipItems.push(`Nível: <strong>${level}</strong>`);
+      if (category) chipItems.push(`Categoria: <strong>${category}</strong>`);
+      chipItems.push(`Página: <strong>${currentPage}</strong>`);
+      chipItems.push(`Itens/página: <strong>${pageSize}</strong>`);
+      chipItems.push(`Ordenação: <strong>${sortState.key} (${sortState.direction})</strong>`);
+
+      chips.innerHTML = chipItems
+        .map(item => `<span class="filter-chip">${item}</span>`)
+        .join("");
     }
 
     function syncUrlState() {
@@ -1321,8 +1408,13 @@
       params.set("sort", sortState.key);
       params.set("direction", sortState.direction);
 
-      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      const query = params.toString();
+      const newUrl = query
+        ? `${window.location.pathname}?${query}`
+        : window.location.pathname;
+
       history.replaceState({}, "", newUrl);
+      renderActiveChips();
     }
 
     function applyUrlState() {
@@ -1436,7 +1528,7 @@
       detail.innerHTML = `
         <div class="detail-card">
           <div class="detail-title">${skill.name}</div>
-          <div class="detail-text">Detalhes da habilidade selecionada na tabela paginada com URL persistente.</div>
+          <div class="detail-text">Detalhes da habilidade selecionada na tabela interativa com link compartilhável.</div>
 
           <div style="margin-top:12px;">
             <span class="badge-progress ${badgeClass}">${badgeLabel}</span>
@@ -1598,7 +1690,8 @@
       renderSkillsTable();
     });
 
-    document.getElementById("exportCsvBtn").addEventListener("click", exportCurrentPageCsv);
+    document.getElementById("exportCsvBtn").addEventListener("click", exportFilteredCsv);
+    document.getElementById("copyLinkBtn").addEventListener("click", copyLinkWithFilters);
 
     document.querySelectorAll("#skillsTable thead th.sortable").forEach(th => {
       th.addEventListener("click", () => {
