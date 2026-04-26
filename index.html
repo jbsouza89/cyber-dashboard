@@ -3,65 +3,150 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cyber Dashboard</title>
+  <title>Cybersecurity Dashboard</title>
   <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #131c2e;
+      --panel-2: #19253d;
+      --panel-3: #22314f;
+      --text: #e8eefc;
+      --muted: #9fb0d0;
+      --line: #2d3b5c;
+      --green: #22c55e;
+      --blue: #38bdf8;
+      --purple: #8b5cf6;
+      --orange: #f59e0b;
+      --red: #ef4444;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 25%),
+        radial-gradient(circle at top right, rgba(139, 92, 246, 0.12), transparent 25%),
+        var(--bg);
+      color: var(--text);
     }
 
     .container {
-      max-width: 1100px;
+      max-width: 1240px;
       margin: 0 auto;
-      padding: 24px;
+      padding: 28px;
     }
 
-    h1 {
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      color: #94a3b8;
-      margin-bottom: 24px;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .title-block h1 {
+      margin: 0;
+      font-size: 40px;
+      line-height: 1.1;
+    }
+
+    .title-block p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .status-pill {
+      background: rgba(34, 197, 94, 0.12);
+      color: #86efac;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
     }
 
     .card {
-      background: #1e293b;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
     }
 
-    .label {
+    .card-label {
+      color: var(--muted);
       font-size: 14px;
-      color: #94a3b8;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
-    .value {
-      font-size: 28px;
-      font-weight: bold;
+    .card-value {
+      font-size: 34px;
+      font-weight: 700;
     }
 
-    .section-title {
-      margin: 32px 0 16px;
-      font-size: 20px;
+    .layout {
+      display: grid;
+      grid-template-columns: 1.7fr 1fr;
+      gap: 20px;
     }
 
-    .track {
-      margin-bottom: 16px;
-      background: #1e293b;
-      padding: 16px;
-      border-radius: 12px;
+    .panel {
+      background: linear-gradient(180deg, var(--panel), #10192c);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+
+    .panel h2 {
+      margin: 0 0 18px;
+      font-size: 22px;
+    }
+
+    .tracks {
+      display: grid;
+      gap: 14px;
+    }
+
+    .track-card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .track-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .track-title {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .track-percent {
+      color: var(--muted);
+      font-size: 14px;
     }
 
     .bar {
@@ -70,70 +155,294 @@
       background: #334155;
       border-radius: 999px;
       overflow: hidden;
-      margin-top: 8px;
     }
 
     .bar-fill {
       height: 100%;
-      background: #22c55e;
+      border-radius: 999px;
     }
 
-    .list {
+    .bar-green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+    .bar-blue { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
+    .bar-purple { background: linear-gradient(90deg, #7c3aed, #8b5cf6); }
+    .bar-orange { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+    .filter-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .filter-row select {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .skill-card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .skill-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .skill-name {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .badge {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .skill-meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .mini-list {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini-item {
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .side-stack {
+      display: grid;
+      gap: 20px;
+    }
+
+    .coverage-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      min-height: 220px;
+      text-align: center;
+    }
+
+    .coverage-ring {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin-bottom: 16px;
+      position: relative;
+      background: conic-gradient(var(--blue) 0deg, var(--blue) 220deg, #243350 220deg 360deg);
+    }
+
+    .coverage-ring::before {
+      content: "";
+      width: 120px;
+      height: 120px;
+      background: var(--panel);
+      border-radius: 50%;
+      position: absolute;
+    }
+
+    .coverage-number {
+      position: relative;
+      z-index: 1;
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    .coverage-label {
+      position: relative;
+      z-index: 1;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .challenge-list {
       display: grid;
       gap: 12px;
     }
 
-    .item {
-      background: #1e293b;
+    .challenge-card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 12px;
       padding: 14px;
-      border-radius: 10px;
     }
 
-    .error {
-      color: #f87171;
-      font-weight: bold;
+    .challenge-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    .challenge-card div {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .loading, .error-box {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 14px;
     }
 
     .loading {
-      color: #fbbf24;
+      background: rgba(245, 158, 11, 0.1);
+      color: #fcd34d;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+
+    .error-box {
+      background: rgba(239, 68, 68, 0.1);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    @media (max-width: 960px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .skills-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 18px;
+      }
+
+      .title-block h1 {
+        font-size: 30px;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card-value {
+        font-size: 28px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Cybersecurity Dashboard</h1>
-    <p class="subtitle">Visualização simples consumindo sua API FastAPI</p>
+    <div class="topbar">
+      <div class="title-block">
+        <h1>Cybersecurity Dashboard</h1>
+        <p>Aprendizado prático com progresso por trilha, skills e desafios.</p>
+      </div>
+      <div id="apiStatus" class="status-pill">Conectando à API...</div>
+    </div>
 
-    <p id="status" class="loading">Carregando dados...</p>
+    <div id="summaryGrid" class="summary-grid" style="display:none;">
+      <div class="card">
+        <div class="card-label">Aluno</div>
+        <div class="card-value" id="userName">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Progresso geral</div>
+        <div class="card-value" id="overallProgress">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label">XP</div>
+        <div class="card-value" id="xp">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Controles CIS cobertos</div>
+        <div class="card-value" id="cisCoverage">-</div>
+      </div>
+    </div>
 
-    <div id="dashboard" style="display:none;">
-      <div class="cards">
-        <div class="card">
-          <div class="label">Aluno</div>
-          <div class="value" id="userName">-</div>
+    <div id="loadingBox" class="loading">Carregando dashboard...</div>
+    <div id="errorBox" class="error-box" style="display:none;"></div>
+
+    <div id="mainLayout" class="layout" style="display:none;">
+      <div>
+        <div class="panel">
+          <h2>Trilhas</h2>
+          <div id="tracks" class="tracks"></div>
         </div>
 
-        <div class="card">
-          <div class="label">Progresso geral</div>
-          <div class="value" id="overallProgress">-</div>
-        </div>
-
-        <div class="card">
-          <div class="label">XP</div>
-          <div class="value" id="xp">-</div>
-        </div>
-
-        <div class="card">
-          <div class="label">Controles CIS cobertos</div>
-          <div class="value" id="cisCoverage">-</div>
+        <div class="panel">
+          <div class="filter-row">
+            <h2 style="margin:0;">Habilidades</h2>
+            <select id="levelFilter">
+              <option value="">Todos os níveis</option>
+              <option value="1">Nível 1</option>
+              <option value="2">Nível 2</option>
+              <option value="3">Nível 3</option>
+            </select>
+          </div>
+          <div id="skillsGrid" class="skills-grid"></div>
         </div>
       </div>
 
-      <h2 class="section-title">Trilhas</h2>
-      <div id="tracks"></div>
+      <div class="side-stack">
+        <div class="panel">
+          <h2>Cobertura CIS</h2>
+          <div class="coverage-box">
+            <div id="coverageRing" class="coverage-ring">
+              <div>
+                <div id="coveragePercent" class="coverage-number">0%</div>
+                <div class="coverage-label">IG1</div>
+              </div>
+            </div>
+            <div id="coverageText" class="muted">Carregando cobertura...</div>
+          </div>
+        </div>
 
-      <h2 class="section-title">Próximos desafios</h2>
-      <div id="challenges" class="list"></div>
+        <div class="panel">
+          <h2>Próximos desafios</h2>
+          <div id="challenges" class="challenge-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -141,68 +450,190 @@
     const API_BASE = "https://cyber-dashboard-6a64.onrender.com";
     const USER_ID = "123";
 
-    async function loadDashboard() {
-      const status = document.getElementById("status");
-      const dashboard = document.getElementById("dashboard");
+    let allSkills = [];
 
-      try {
-        const response = await fetch(`${API_BASE}/api/dashboard/${USER_ID}`);
-
-        if (!response.ok) {
-          throw new Error(`Erro HTTP: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        document.getElementById("userName").textContent = data.user.name;
-        document.getElementById("overallProgress").textContent =
-          Math.round(data.summary.overallProgress * 100) + "%";
-        document.getElementById("xp").textContent = data.summary.xp;
-        document.getElementById("cisCoverage").textContent =
-          data.frameworkCoverage[0].controlsCovered + "/" + data.frameworkCoverage[0].controlsTotal;
-
-        const tracksEl = document.getElementById("tracks");
-        tracksEl.innerHTML = "";
-
-        data.tracks.forEach(track => {
-          const percent = Math.round(track.progress * 100);
-
-          const el = document.createElement("div");
-          el.className = "track";
-          el.innerHTML = `
-            <strong>${track.name}</strong>
-            <div>${percent}% concluído</div>
-            <div class="bar">
-              <div class="bar-fill" style="width: ${percent}%"></div>
-            </div>
-          `;
-          tracksEl.appendChild(el);
-        });
-
-        const challengesEl = document.getElementById("challenges");
-        challengesEl.innerHTML = "";
-
-        data.recommendedChallenges.forEach(challenge => {
-          const el = document.createElement("div");
-          el.className = "item";
-          el.innerHTML = `
-            <strong>${challenge.name}</strong><br>
-            Plataforma: ${challenge.platform}<br>
-            Motivo: ${challenge.reason}<br>
-            Dificuldade: ${challenge.difficulty}
-          `;
-          challengesEl.appendChild(el);
-        });
-
-        status.style.display = "none";
-        dashboard.style.display = "block";
-      } catch (error) {
-        status.className = "error";
-        status.textContent = "Erro ao carregar dashboard: " + error.message;
+    function setApiStatus(ok, text) {
+      const el = document.getElementById("apiStatus");
+      el.textContent = text;
+      if (ok) {
+        el.style.background = "rgba(34, 197, 94, 0.12)";
+        el.style.color = "#86efac";
+        el.style.border = "1px solid rgba(34, 197, 94, 0.35)";
+      } else {
+        el.style.background = "rgba(239, 68, 68, 0.12)";
+        el.style.color = "#fca5a5";
+        el.style.border = "1px solid rgba(239, 68, 68, 0.35)";
       }
     }
 
-    loadDashboard();
+    function progressColor(index) {
+      const classes = ["bar-green", "bar-blue", "bar-purple", "bar-orange"];
+      return classes[index % classes.length];
+    }
+
+    function renderTracks(tracks) {
+      const tracksEl = document.getElementById("tracks");
+      tracksEl.innerHTML = "";
+
+      tracks.forEach((track, index) => {
+        const percent = Math.round(track.progress * 100);
+        const el = document.createElement("div");
+        el.className = "track-card";
+        el.innerHTML = `
+          <div class="track-top">
+            <div class="track-title">${track.name}</div>
+            <div class="track-percent">${percent}%</div>
+          </div>
+          <div class="bar">
+            <div class="bar-fill ${progressColor(index)}" style="width:${percent}%"></div>
+          </div>
+        `;
+        tracksEl.appendChild(el);
+      });
+    }
+
+    function renderChallenges(challenges) {
+      const el = document.getElementById("challenges");
+      el.innerHTML = "";
+
+      if (!challenges || challenges.length === 0) {
+        el.innerHTML = `<div class="challenge-card"><div>Nenhum desafio recomendado.</div></div>`;
+        return;
+      }
+
+      challenges.forEach(challenge => {
+        const item = document.createElement("div");
+        item.className = "challenge-card";
+        item.innerHTML = `
+          <strong>${challenge.name}</strong>
+          <div>Plataforma: ${challenge.platform}</div>
+          <div>Motivo: ${challenge.reason}</div>
+          <div>Dificuldade: ${challenge.difficulty}</div>
+        `;
+        el.appendChild(item);
+      });
+    }
+
+    function renderCoverage(coverage) {
+      const first = coverage?.[0];
+      if (!first) return;
+
+      const percent = Math.round(first.coverage * 100);
+      document.getElementById("coveragePercent").textContent = `${percent}%`;
+      document.getElementById("coverageText").textContent =
+        `${first.controlsCovered} de ${first.controlsTotal} controles cobertos (${first.frameworkName})`;
+
+      document.getElementById("coverageRing").style.background =
+        `conic-gradient(var(--blue) 0deg, var(--blue) ${percent * 3.6}deg, #243350 ${percent * 3.6}deg 360deg)`;
+    }
+
+    function renderSkills(skills) {
+      const grid = document.getElementById("skillsGrid");
+      grid.innerHTML = "";
+
+      if (!skills || skills.length === 0) {
+        grid.innerHTML = `<div class="skill-card"><div class="skill-name">Nenhuma skill encontrada</div><div class="skill-meta">Tente outro filtro.</div></div>`;
+        return;
+      }
+
+      skills.forEach((skill, index) => {
+        const percent = Math.round(skill.progress * 100);
+        const challengeCount = skill.challenges ? skill.challenges.length : 0;
+        const frameworks = (skill.frameworks || []).map(f => f.code).join(", ") || "Sem framework";
+
+        const card = document.createElement("div");
+        card.className = "skill-card";
+        card.innerHTML = `
+          <div class="skill-header">
+            <div class="skill-name">${skill.name}</div>
+            <div class="badge">Nível ${skill.level}</div>
+          </div>
+          <div class="skill-meta">
+            Categoria: ${skill.category} · Frameworks: ${frameworks}
+          </div>
+          <div class="bar">
+            <div class="bar-fill ${progressColor(index)}" style="width:${percent}%"></div>
+          </div>
+          <div class="skill-meta" style="margin-top:10px;">
+            ${percent}% concluído · ${challengeCount} desafio(s)
+          </div>
+          <div class="mini-list">
+            ${(skill.challenges || []).slice(0, 2).map(ch => `
+              <div class="mini-item">
+                <strong>${ch.name}</strong><br>
+                ${ch.platform} · ${ch.status}
+              </div>
+            `).join("")}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Erro HTTP ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function loadDashboard() {
+      try {
+        const dashboardData = await fetchJson(`${API_BASE}/api/dashboard/${USER_ID}`);
+        setApiStatus(true, "API conectada");
+
+        document.getElementById("userName").textContent = dashboardData.user.name;
+        document.getElementById("overallProgress").textContent =
+          Math.round(dashboardData.summary.overallProgress * 100) + "%";
+        document.getElementById("xp").textContent = dashboardData.summary.xp;
+        document.getElementById("cisCoverage").textContent =
+          `${dashboardData.frameworkCoverage[0].controlsCovered}/${dashboardData.frameworkCoverage[0].controlsTotal}`;
+
+        renderTracks(dashboardData.tracks);
+        renderChallenges(dashboardData.recommendedChallenges);
+        renderCoverage(dashboardData.frameworkCoverage);
+
+        document.getElementById("summaryGrid").style.display = "grid";
+        document.getElementById("mainLayout").style.display = "grid";
+      } catch (error) {
+        setApiStatus(false, "Falha na API");
+        document.getElementById("errorBox").style.display = "block";
+        document.getElementById("errorBox").textContent =
+          "Erro ao carregar o dashboard: " + error.message;
+      }
+    }
+
+    async function loadSkills(level = "") {
+      try {
+        const url = level
+          ? `${API_BASE}/api/users/${USER_ID}/skills?level=${level}`
+          : `${API_BASE}/api/users/${USER_ID}/skills`;
+
+        allSkills = await fetchJson(url);
+        renderSkills(allSkills);
+      } catch (error) {
+        document.getElementById("errorBox").style.display = "block";
+        document.getElementById("errorBox").textContent =
+          "Erro ao carregar habilidades: " + error.message;
+      }
+    }
+
+    async function init() {
+      document.getElementById("loadingBox").style.display = "block";
+      document.getElementById("errorBox").style.display = "none";
+
+      await loadDashboard();
+      await loadSkills();
+
+      document.getElementById("loadingBox").style.display = "none";
+
+      document.getElementById("levelFilter").addEventListener("change", async (e) => {
+        await loadSkills(e.target.value);
+      });
+    }
+
+    init();
   </script>
 </body>
 </html>
